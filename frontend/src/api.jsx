@@ -5,122 +5,156 @@ function Api() {
   const redux_theme = useSelector((state) => state.theme);
   const isLight = redux_theme.theme === true;
 
+  const [body, setBody] = useState(`{\n  "email": "developer@apiflow.com",\n  "password": "hashed_pwd_secret"\n}`);
+
   const [method, setMethod] = useState('GET');
   const [url, setUrl] = useState('https://api.apiflow.dev/v1/users/profile');
   const [activeTab, setActiveTab] = useState('params');
 
+  const color_codes_bg = {
+    200: 'bg-emerald-500/10',
+    201: 'bg-emerald-500/10',
+    204: 'bg-emerald-500/10',
+    400: 'bg-rose-500/10',
+    401: 'bg-rose-500/10',
+    403: 'bg-rose-500/10',
+    404: 'bg-rose-500/10',
+    500: 'bg-rose-500/10',
+    503: 'bg-rose-500/10',
+  }
+
+  const color_codes_text = {
+    200: 'text-emerald-500',
+    201: 'text-emerald-500',
+    204: 'text-emerald-500',
+    400: 'text-rose-500',
+    401: 'text-rose-500',
+    403: 'text-rose-500',
+    404: 'text-rose-500',
+    500: 'text-rose-500',
+    503: 'text-rose-500',
+  }
+
+  const color_codes_border = {
+    200: 'border-emerald-500/20',
+    201: 'border-emerald-500/20',
+    204: 'border-emerald-500/20',
+    400: 'border-rose-500/20',
+    401: 'border-rose-500/20',
+    403: 'border-rose-500/20',
+    404: 'border-rose-500/20',
+    500: 'border-rose-500/20',
+    503: 'border-rose-500/20',
+  }
+
+  const status_message = {
+    200: 'Ok',
+    201: 'Created',
+    204: 'No Content',
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'Not Found',
+    500: 'Internal Server Error',
+    503: 'Service Unavailable',
+  }
+
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
 
-  const handleSend = async() => {
-    setLoading(true);
-    // Simulating API Call
-    setTimeout(async() => {
+  const [status_color_code,setStatusColorCode] = useState({})
+
+
+  const status_ui = (status) => {
+
+    if(status >= 200 && status < 300){
+        setStatusColorCode({
+            bg: "bg-emerald-500/10",
+            text: "text-emerald-500",
+            border: "border-emerald-500/20",
+            message: "Ok",
+        })
+    }
+    else if(status >= 400 && status < 500){
+        setStatusColorCode({
+            bg: "bg-rose-500/10",
+            text: "text-rose-500",
+            border: "border-rose-500/20",
+            message: "Error",
+        })
+    }
+    else if(status >= 500 && status < 600){
+        setStatusColorCode({
+            bg: "bg-rose-500/10",
+            text: "text-rose-500",
+            border: "border-rose-500/20",
+            message: "Error",
+        })
+    }else{
+        setStatusColorCode({
+            bg: "bg-rose-500/10",
+            text: "text-rose-500",
+            border: "border-rose-500/20",
+            message: "Error",
+        })
+    }
+
+    
+  }
+
+    const handleSend = async () => {
+        setLoading(true);
+        const startTime = Date.now();
+
+        try {
+            const options = {
+            method,
+            headers: {
+                "Content-Type": "application/json",
+            },
+            };
+
+            if (method !== "GET" && body) {
+            options.body = body;
+            }
+
+            const res = await fetch(url, options);
+
+            let data;
+            try {
+            data = await res.json();
+            } catch {
+            data = await res.text(); // fallback
+            }
+
+            const endTime = Date.now();
+
+            setResponse({
+            status: res.status,
+            status_message: status_message[res.status] || "Unknown",
+            time: `${endTime - startTime} ms`, // ✅ real time
+            size: `${(JSON.stringify(data).length / 1024).toFixed(2)} KB`, // ✅ correct KB
+            data,
+            });
+
+            status_ui(res.status);
+
+        } catch (error) {
+            setResponse({
+            status: "NETWORK ERROR",
+            status_message: "Failed",
+            time: "0 ms",
+            size: "0 KB",
+            data: error.message,
+            });
+
+            status_ui(500);
+        }
+
+        setLoading(false);
+        };
+
         
-        if(method === 'GET'){
-
-            try{
-                const response = await fetch(url);
-                console.log(response)
-                const status = response.status;
-                const status_message = status === 200 ? 'Ok' : 'Error';
-                const data = await response.json();
-                setResponse({
-                    status: status,
-                    status_message: status_message,
-                    time: Date.now(),
-                    size: JSON.stringify(data).length,
-                    data: data
-                });
-            }
-            catch(error){
-                console.log(error);
-                setResponse({
-                    status: error.status,
-                    status_message: 'Error',
-                    time: Date.now(),
-                    size: JSON.stringify(error).length,
-                    data: error
-                });
-            }
-            
-        }
-        else if(method === 'POST'){
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({}),
-            });
-            const data = await response.json();
-            console.log(data);
-            setResponse(data);
-        }
-        else if(method === 'PUT'){
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({}),
-            });
-            const data = await response.json();
-            console.log(data);
-            setResponse(data);
-        }
-        else if(method === 'DELETE'){
-            const response = await fetch(url, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({}),
-            });
-            const data = await response.json();
-            console.log(data);
-            setResponse(data);
-        }
-        else if(method === 'PATCH'){
-            const response = await fetch(url, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({}),
-            });
-            const data = await response.json();
-            console.log(data);
-            setResponse(data);
-        }
-
-
-    //   setResponse({
-    //     status: 200,
-    //     time: '142 ms',
-    //     size: '2.4 KB',
-    //     data: {
-    //       status: "success",
-    //       data: {
-    //         id: "usr_9x8a7b6c",
-    //         email: "developer@apiflow.com",
-    //         plan: "enterprise",
-    //         rate_limit: {
-    //           limit: 10000,
-    //           remaining: 9998
-    //         },
-    //         features_enabled: true,
-    //         suspended: false,
-    //         metadata: null
-    //       }
-    //     }
-    //   });
-
-
-
-      setLoading(false);
-    }, 800);
-  };
 
   const getMethodColor = (m) => {
     switch(m) {
@@ -184,7 +218,7 @@ function Api() {
         </div>
 
         {/* Main Workspace */}
-        <div className="flex-1 flex flex-col min-h-[700px] mt-16">
+        <div className="flex-1 flex flex-col min-h-[700px] mt-10">
           {/* Header & URL Action Bar */}
           <div className={`p-4 md:p-6 border-b flex ${isLight ? 'border-slate-200 bg-white/50' : 'border-slate-800/80 bg-slate-900/30'}`}>
             <div className={`flex w-full flex-col md:flex-row gap-2 md:gap-0 md:rounded-2xl border shadow-sm transition-colors ${isLight ? 'bg-white border-slate-200 shadow-slate-200/50' : 'bg-[#0d131c] border-slate-700/60 focus-within:border-blue-500/50'} rounded-2xl md:p-1.5`}>
@@ -225,10 +259,10 @@ function Api() {
           </div>
 
           {/* Settings & Execution Visualizer */}
-          <div className="flex-1 flex flex-col xl:flex-row overflow-hidden">
+          <div className="flex-1 flex flex-col xl:flex-row overflow-hidden min-h-0">
             
             {/* Request Settings Tab */}
-            <div className={`w-full xl:w-1/2 border-r flex flex-col ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
+            <div className={`w-full xl:w-1/2 border-r flex flex-col min-h-0 ${isLight ? 'border-slate-200' : 'border-slate-800/80'}`}>
               <div className={`flex px-2 border-b ${isLight ? 'border-slate-200 bg-slate-50/30' : 'border-slate-800/80 bg-slate-950/40'}`}>
                 {['Params', 'Headers', 'Body', 'Auth'].map(tab => (
                   <button 
@@ -240,7 +274,7 @@ function Api() {
                   </button>
                 ))}
               </div>
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-transparent">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-transparent min-h-0">
                 {activeTab === 'params' && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-12 gap-3 items-center">
@@ -260,8 +294,10 @@ function Api() {
                   </div>
                 )}
                 {activeTab === 'body' && (
-                  <div className={`w-full h-full rounded-2xl border-2 p-5 font-mono text-sm focus-within:border-blue-500 transition-all ${isLight ? 'border-slate-200 bg-white shadow-inner' : 'border-slate-800 bg-[#0d131c]'}`}>
-                    <textarea 
+                  <div className={`w-full h-full rounded-2xl border-2 p-5 font-mono text-sm focus-within:border-blue-500 transition-all min-h-0 ${isLight ? 'border-slate-200 bg-white shadow-inner' : 'border-slate-800 bg-[#0d131c]'}`}>
+                    <textarea
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
                       className={`w-full h-full bg-transparent outline-none resize-none ${isLight ? 'text-slate-700' : 'text-slate-300'}`}
                       placeholder="{\n  &quot;key&quot;: &quot;value&quot;\n}"
                       spellCheck="false"
@@ -280,21 +316,21 @@ function Api() {
             </div>
             
             {/* Realtime API Response Visualizer */}
-            <div className={`w-full xl:w-2/3 flex flex-col relative ${isLight ? 'bg-slate-50/50' : 'bg-[#0a0f18]/30'}`}>
-              <div className={`w-full flex justify-between items-center px-6 py-3 border-b ${isLight ? 'border-slate-200 bg-slate-100/30' : 'border-slate-800/80 bg-slate-950/20'}`}>
+            <div className={`w-full xl:w-2/3 flex flex-col relative min-h-0 ${isLight ? 'bg-slate-50/50' : 'bg-[#0a0f18]/30'}`}>
+              <div className={`flex justify-between items-center px-6 py-3 border-b shrink-0 ${isLight ? 'border-slate-200 bg-slate-100/30' : 'border-slate-800/80 bg-slate-950/20'}`}>
                 <h3 className="text-sm font-semibold tracking-wide flex items-center gap-1 w-1/3">
                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                    Transmission Response
                 </h3>
                 {response && (
-                  <div className="w-full flex gap-1 items-start justify-center">
-                    <span className="px-3 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-xs font-bold tracking-widest uppercase">{response.status} {response.status_message}</span>
+                  <div className="flex gap-1 items-start justify-center">
+                    <span className={`px-3 py-1 rounded-md ${status_color_code.bg} ${status_color_code.text} ${status_color_code.border} text-xs font-bold tracking-widest uppercase`}>{response.status} {response.status_message}</span>
                     <span className={`text-xs font-mono font-medium px-2 py-1 rounded border ${isLight ? 'text-slate-500 border-slate-200 bg-white' : 'text-slate-400 border-slate-700 bg-slate-800'}`}>{response.time}</span>
                     <span className={`text-xs font-mono font-medium px-2 py-1 rounded border ${isLight ? 'text-slate-500 border-slate-200 bg-white' : 'text-slate-400 border-slate-700 bg-slate-800'}`}>{response.size}</span>
                   </div>
                 )}
               </div>
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 relative">
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 relative min-h-0">
                 {!response && !loading && (
                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-60">
                     <div className="relative">
@@ -314,8 +350,8 @@ function Api() {
                    </div>
                 )}
                 {response && !loading && (
-                  <div className={`w-full h-full rounded-2xl border-2 p-6 font-mono text-[14px] leading-relaxed shadow-inner overflow-x-auto ${isLight ? 'bg-white text-slate-800 border-slate-200' : 'bg-[#0d131c] text-white border-slate-800'} transition-all`}>
-                    <pre>
+                  <div className={`w-full h-fit min-h-full rounded-2xl border-2 p-5 md:p-6 font-mono text-[13px] md:text-[14px] leading-relaxed shadow-inner overflow-auto ${isLight ? 'bg-white text-slate-800 border-slate-200' : 'bg-[#0d131c] text-white border-slate-800'} transition-all`}>
+                    <pre className="whitespace-pre-wrap break-all md:wrap-break-word">
                       <code dangerouslySetInnerHTML={{ __html: syntaxHighlight(response.data) }}>
                       </code>
                     </pre>
