@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import {Tooltip,Select, ListBox, Separator, Label,Header} from "@heroui/react";
+import { useDispatch } from 'react-redux';
+import { setWorkspace, loadWorkspace, clearWorkspace, changeWorkspace } from './store/features/workspaceSlice';
 
 function Api() {
   const redux_theme = useSelector((state) => state.theme);
@@ -17,17 +19,17 @@ function Api() {
     { key: 'Content-Type', value: 'application/json' },
   ]);
 
+  const workspace = useSelector((state) => state.workspace ?? []);
+  const activeWorkspace = workspace.find((item) => item.active);
+  const dispatch = useDispatch();
+
   useEffect(() => {
-    console.log(headers);
-  }, [headers]);
+    dispatch(loadWorkspace());
+  }, []);
 
   const [params, setParams] = useState([
     { key: 'limit', value: '100' },
   ]);
-
-  useEffect(() => {
-    console.log(params);
-  }, [params]);
 
 
   const headerPresets = [
@@ -111,8 +113,6 @@ function Api() {
   },
  
 ];
-
-  console.log(headerPresets);
 
   const color_codes_bg = {
   100: "bg-blue-500/10",
@@ -745,11 +745,6 @@ function Api() {
           
         }
 
-
-
-
-        console.log(`queryParams : `,queryParams)
-
         try {
           const res = await axios({
             url,
@@ -789,6 +784,8 @@ function Api() {
           status_ui(500);
 
         } finally {
+          dispatch(setWorkspace({url, method}));
+          dispatch(loadWorkspace());
           setLoading(false);
         }
       };   
@@ -854,14 +851,22 @@ function Api() {
             <h2 className={`font-bold text-xs tracking-widest uppercase ${isLight ? 'text-slate-500' : 'text-slate-500'}`}>Workspace Memory</h2>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-            {['/users/profile', '/auth/login', '/settings/keys', '/data/export'].map((path, i) => {
-              const methods = ['GET', 'POST', 'PUT', 'DELETE'];
-              const m = methods[i];
+            {workspace.map((item, i) => {
               return (
-                <div key={i} className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${i === 0 ? (isLight ? 'bg-blue-50 text-blue-800 border-l-4 border-l-blue-500' : 'bg-blue-500/10 text-blue-300 border border-blue-500/20 border-l-4 border-l-blue-500') : (isLight ? 'hover:bg-slate-100/80 text-slate-600 border border-transparent border-l-4 border-l-transparent' : 'hover:bg-slate-800/40 text-slate-400 border border-transparent border-l-4 rounded border-l-transparent')}`}>
+                <div key={i} className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${item.id === activeWorkspace?.id ? (isLight ? 'bg-blue-50 text-blue-800 border-l-4 border-l-blue-500' : 'bg-blue-500/10 text-blue-300 border border-blue-500/20 border-l-4 border-l-blue-500') : (isLight ? 'hover:bg-slate-100/80 text-slate-600 border border-transparent border-l-4 border-l-transparent' : 'hover:bg-slate-800/40 text-slate-400 border border-transparent border-l-4 rounded border-l-transparent')}`} 
+                onClick={() => {
+                  dispatch(changeWorkspace(item.id))
+                  dispatch(loadWorkspace())
+                }}>
                   <div className="flex items-center gap-3 font-mono text-sm overflow-hidden">
-                    <span className={`font-bold text-[11px] w-9 flex ${getMethodColor(m)}`}>{m}</span>
-                    <span className="truncate">{path}</span>
+                    <span className={`font-bold text-[11px] w-9 flex ${getMethodColor(item.method)}`}>{item.method}</span>
+                    <span className="truncate">{item.url}</span>
+                    <button className={`cursor-pointer w-10 h-10 shrink-0 p-3 rounded-xl border-2 flex justify-center items-center transition-colors ${isLight ? 'border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200' : 'border-slate-800 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30'}`} onClick={() => {
+                      dispatch(clearWorkspace(item.id))
+                      dispatch(loadWorkspace())
+                    }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
                   </div>
                 </div>
               );
@@ -1035,13 +1040,13 @@ function Api() {
                     <span className={`px-3 py-1 rounded-md ${status_color_code.bg} ${status_color_code.text} ${status_color_code.border} text-xs font-bold tracking-widest uppercase`}>
                       <Tooltip delay={0}>
                         <Tooltip.Trigger className={`cursor-pointer hover:opacity-80 transition-opacity`}>
-                          {status_message_statuscode} {status_message_text.message}
+                          {status_message_statuscode} {status_message_text?.message}
                         </Tooltip.Trigger>
                         <Tooltip.Content showArrow placement="bottom" className={`${isLight ? 'bg-slate-50/50' : 'bg-[#0a0f18]/30'} ${status_color_code.text} ${status_color_code.border} border-2`}>
                           <div className="max-w-xs px-1 py-1.5">
-                            <p className="mb-1 font-semibold">{status_message_statuscode} {status_message_text.message}</p>
+                            <p className="mb-1 font-semibold">{status_message_statuscode} {status_message_text?.message}</p>
                             <p className="text-sm text-muted">
-                              {status_message_text.description}
+                              {status_message_text?.description}
                             </p>
                           </div>
                         </Tooltip.Content>
