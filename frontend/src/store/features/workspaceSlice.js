@@ -5,6 +5,7 @@ const workspaceSlice = createSlice({
     initialState: [],
     reducers: {
         loadWorkspace: (state) => {
+            console.log("load state",state)
             const workspace = localStorage.getItem("workspace");
             if (workspace) {
                 state = JSON.parse(workspace);
@@ -16,8 +17,7 @@ const workspaceSlice = createSlice({
             if (existingWorkspace) {
                 return;
             }
-            state = state.map((item) => ({ ...item, active: false }));
-            state.push({ id: Date.now(), url: action.payload.url, method: action.payload.method, active: true });
+            state = state.map((item) => ({ ...item, active: false })).concat({ id: Date.now(), url: action.payload.url, method: action.payload.method, params: action.payload.params, headers: action.payload.headers, body: action.payload.body, active: true,active_tab:action.payload.activeTab });
             localStorage.setItem("workspace", JSON.stringify(state));
         },
         clearWorkspace: (state, action) => {
@@ -27,11 +27,25 @@ const workspaceSlice = createSlice({
         },
         changeWorkspace: (state, action) => {
             const id = action.payload;
+            console.log("id",id);
             state = state.map((item) => item.id === id ? { ...item, active: true } : { ...item, active: false });
+            console.log("state",state);
+            localStorage.setItem("workspace", JSON.stringify(state));
+        },
+        updateWorkspace: (state, action) => {
+            const id = action.payload.id;
+            if(!id){
+                return;
+            }
+            state = JSON.parse(localStorage.getItem("workspace"));
+            console.log("before",state)
+
+            state = state.map((item) => item.id === id ? { id:id,url:action.payload.url,method:action.payload.method,params:action.payload.params,headers:action.payload.headers,body:action.payload.body,active:true,active_tab:action.payload.activeTab} : item);
+            console.log("update state",state)
             localStorage.setItem("workspace", JSON.stringify(state));
         }
     },
 });
 
-export const { setWorkspace, loadWorkspace, clearWorkspace, changeWorkspace } = workspaceSlice.actions;
+export const { setWorkspace, loadWorkspace, clearWorkspace, changeWorkspace, updateWorkspace } = workspaceSlice.actions;
 export default workspaceSlice.reducer;
