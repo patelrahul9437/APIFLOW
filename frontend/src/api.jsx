@@ -52,6 +52,7 @@ function Api() {
       setParams(activeWorkspace.params.map((p) => ({ ...p })));
       setHeaders(activeWorkspace.headers.map((h) => ({ ...h })));
       setBody(activeWorkspace.body);
+      // setActiveTab(activeWorkspace.activeTab);
     }
   }, [activeWorkspace]);
 
@@ -920,6 +921,7 @@ function Api() {
     setParams(activeWorkspace.params);
     setHeaders(activeWorkspace.headers);
     setBody(activeWorkspace.body);
+    setActiveTab(activeWorkspace.activeTab);
   };
 
   const [loading, setLoading] = useState(false);
@@ -1022,7 +1024,16 @@ function Api() {
 
       status_ui(500);
     } finally {
-      dispatch(setWorkspace({ url, method, params, headers, body }));
+      dispatch(
+        setWorkspace({
+          url: url,
+          method: method,
+          params: params,
+          headers: headers,
+          body: body,
+          activeTab: activeTab,
+        }),
+      );
       dispatch(loadWorkspace());
       setLoading(false);
     }
@@ -1037,6 +1048,7 @@ function Api() {
         params,
         headers,
         body,
+        activeTab,
       }),
     );
     console.log("data changed", Date.now());

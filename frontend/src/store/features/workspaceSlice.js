@@ -13,11 +13,14 @@ const workspaceSlice = createSlice({
             return state;
         },
         setWorkspace: (state, action) => {
+            console.log("setup run",action.payload)
             const existingWorkspace = state.find((item) => item.url === action.payload.url && item.method === action.payload.method);
             if (existingWorkspace) {
                 return;
             }
-            state = state.map((item) => ({ ...item, active: false })).concat({ id: Date.now(), url: action.payload.url, method: action.payload.method, params: action.payload.params, headers: action.payload.headers, body: action.payload.body, active: true,active_tab:action.payload.activeTab });
+            state = state.map((item) => ({ ...item, active: false }))
+            state.push({ id: Date.now(), url: action.payload.url, method: action.payload.method, params: action.payload.params, headers: action.payload.headers, body: action.payload.body, active: true, activeTab:action.payload.activeTab ? action.payload.activeTab : "params" })
+            console.log("final state",state)
             localStorage.setItem("workspace", JSON.stringify(state));
         },
         clearWorkspace: (state, action) => {
@@ -40,7 +43,7 @@ const workspaceSlice = createSlice({
             state = JSON.parse(localStorage.getItem("workspace"));
             console.log("before",state)
 
-            state = state.map((item) => item.id === id ? { id:id,url:action.payload.url,method:action.payload.method,params:action.payload.params,headers:action.payload.headers,body:action.payload.body,active:true,active_tab:action.payload.activeTab} : item);
+            state = state.map((item) => item.id === id ? { id:id,url:action.payload.url,method:action.payload.method,params:action.payload.params,headers:action.payload.headers,body:action.payload.body,active:true,activeTab:action.payload.activeTab} : item);
             console.log("update state",state)
             localStorage.setItem("workspace", JSON.stringify(state));
         }
