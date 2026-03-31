@@ -8,6 +8,7 @@ import {
   Separator,
   Label,
   Header,
+  Input,
 } from "@heroui/react";
 import { useDispatch } from "react-redux";
 import {
@@ -16,6 +17,7 @@ import {
   clearWorkspace,
   changeWorkspace,
   updateWorkspace,
+  createWorkspace,
 } from "./store/features/workspaceSlice";
 
 function Api() {
@@ -30,9 +32,17 @@ function Api() {
   const [url, setUrl] = useState("https://httpbin.org/status/404");
   const [activeTab, setActiveTab] = useState("params");
 
+  const [auth, setAuth] = useState("noAuth");
+
   const [headers, setHeaders] = useState([
     { key: "Content-Type", value: "application/json" },
   ]);
+
+  const [basicAuthUsername, setBasicAuthUsername] = useState("");
+  const [basicAuthPassword, setBasicAuthPassword] = useState("");
+  const [bearerAuthToken, setBearerAuthToken] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [jwtToken, setJwtToken] = useState("");
 
   const workspace = useSelector((state) => state.workspace ?? []);
   const activeWorkspace = workspace.find((item) => item.active);
@@ -55,6 +65,14 @@ function Api() {
       // setActiveTab(activeWorkspace.activeTab);
     }
   }, [activeWorkspace]);
+
+  const authType = [
+    { id: "noAuth", name: "No Auth" },
+    { id: "basicAuth", name: "Basic Auth" },
+    { id: "bearerToken", name: "Bearer Token" },
+    { id: "apiKey", name: "API Key" },
+    { id: "jwt", name: "JWT" },
+  ];
 
   const headerPresets = [
     // ─── Authentication ───────────────────────────────────────────────────────
@@ -922,6 +940,7 @@ function Api() {
     setHeaders(activeWorkspace.headers);
     setBody(activeWorkspace.body);
     setActiveTab(activeWorkspace.activeTab);
+    setAuth(activeWorkspace.auth);
   };
 
   const [loading, setLoading] = useState(false);
@@ -982,16 +1001,68 @@ function Api() {
     console.log(`queryParams : `, queryParams);
     let parsedBody;
     if (method !== "GET" && body) {
-      parsedBody = JSON.parse(body);
+      const trimmedBody = body.trim();
+      if (trimmedBody) {
+        try {
+          parsedBody = JSON.parse(trimmedBody);
+        } catch (error) {
+          console.log(`error : `, error);
+          setResponse({
+            status: "ERROR",
+            status_message: "Invalid JSON",
+            time: `${Date.now() - startTime} ms`,
+            size: "0 KB",
+            data: error.message,
+          });
+          status_ui(400);
+          setLoading(false);
+          return;
+        }
+      }
     }
+
+    if (auth === "basicAuth") {
+      if (!headers.find((item) => item.key === "Authorization")) {
+        headers.push({
+          key: "Authorization",
+          value: `Basic ${btoa(`${basicAuthUsername}:${basicAuthPassword}`)}`,
+        });
+      }
+    }
+
+    if (auth === "bearerToken") {
+      if (!headers.find((item) => item.key === "Authorization")) {
+        headers.push({
+          key: "Authorization",
+          value: `Bearer ${bearerAuthToken}`,
+        });
+      }
+    }
+
+    if (auth === "apiKey") {
+      if (!headers.find((item) => item.key === "Authorization")) {
+        headers.push({ key: "Authorization", value: `Bearer ${apiKey}` });
+      }
+    }
+
+    if (auth === "jwt") {
+      if (!headers.find((item) => item.key === "Authorization")) {
+        headers.push({ key: "Authorization", value: `Bearer ${jwtToken}` });
+      }
+    }
+
+    const finalheaders = headers.reduce((acc, { key, value }) => {
+      if (key.trim()) acc[key.trim()] = value.trim();
+      return acc;
+    }, {});
 
     try {
       const res = await axios({
-        url,
-        method,
+        url: `https://corsproxy.io/?url=` + url.trim(),
+        method: method.toLowerCase(),
         params: queryParams,
         headers: {
-          ...headers,
+          ...finalheaders,
           "Content-Type": "application/json",
         },
         data: parsedBody,
@@ -1025,13 +1096,15 @@ function Api() {
       status_ui(500);
     } finally {
       dispatch(
-        setWorkspace({
-          url: url,
-          method: method,
-          params: params,
-          headers: headers,
-          body: body,
-          activeTab: activeTab,
+        updateWorkspace({
+          id: activeWorkspace?.id,
+          url,
+          method,
+          params,
+          headers,
+          body,
+          activeTab,
+          auth,
         }),
       );
       dispatch(loadWorkspace());
@@ -1039,21 +1112,21 @@ function Api() {
     }
   };
 
-  useEffect(() => {
-    dispatch(
-      updateWorkspace({
-        id: activeWorkspace?.id,
-        url,
-        method,
-        params,
-        headers,
-        body,
-        activeTab,
-      }),
-    );
-    console.log("data changed", Date.now());
-    console.log(workspace);
-  }, [handleSend]);
+  // useEffect(() => {
+  //   dispatch(
+  //     updateWorkspace({
+  //       id: activeWorkspace?.id,
+  //       url,
+  //       method,
+  //       params,
+  //       headers,
+  //       body,
+  //       activeTab,
+  //     }),
+  //   );
+  //   console.log("data changed", Date.now());
+  //   console.log(workspace);
+  // }, [url, method, params, headers, body, activeTab]);
 
   const handleAddParam = () => {
     setParams([...params, { key: "", value: "" }]);
@@ -1181,6 +1254,30 @@ function Api() {
                 </div>
               );
             })}
+            <div className="memory_buttons">
+              <button
+                className={`cursor-pointer w-10 h-10 shrink-0 p-3 rounded-xl border-2 flex justify-center items-center transition-colors ${isLight ? "border-slate-200 text-slate-400 hover:text-emerald-400 hover:bg-emerald-50 hover:border-emerald-200" : "border-slate-800 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30"}`}
+                onClick={() => {
+                  dispatch(createWorkspace());
+                  dispatch(loadWorkspace());
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.5}
+                  stroke="currentColor"
+                  className="w-4 h-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4.5v15m7.5-7.5h-15"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1471,69 +1568,169 @@ function Api() {
                 )}
                 {activeTab === "auth" && (
                   <div className="auth-container space-y-3">
-                    {auth.map((auth, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-12 gap-3 items-center"
+                    <Select
+                      className="w-full"
+                      placeholder="Select one Auth Type"
+                      items={authType}
+                      onChange={(value) => setAuth(value)}
+                      value={auth}
+                    >
+                      <Label
+                        className={`text-sm font-semibold tracking-wide ${isLight ? "text-slate-900" : "text-slate-100"}`}
                       >
-                        <input
-                          type="text"
-                          placeholder="Key"
-                          className={`col-span-12 md:col-span-5 px-4 py-3 rounded-xl border-2 font-mono text-sm bg-transparent outline-none focus:border-blue-500 transition-colors ${isLight ? "border-slate-200 placeholder-slate-400" : "border-slate-800 placeholder-slate-600 focus:bg-slate-800/30"} focus:shadow-[0_0_10px_rgba(59,130,246,0.1)]`}
-                          defaultValue={auth.key}
-                          onChange={(e) =>
-                            handleAuthChange(index, "key", e.target.value)
-                          }
-                        />
-                        <input
-                          type="text"
-                          placeholder="Value"
-                          className={`col-span-12 md:col-span-6 px-4 py-3 rounded-xl border-2 font-mono text-sm bg-transparent outline-none focus:border-blue-500 transition-colors ${isLight ? "border-slate-200 placeholder-slate-400" : "border-slate-800 placeholder-slate-600 focus:bg-slate-800/30"} focus:shadow-[0_0_10px_rgba(59,130,246,0.1)]`}
-                          defaultValue={auth.value}
-                          onChange={(e) =>
-                            handleAuthChange(index, "value", e.target.value)
-                          }
-                        />
-                        <button
-                          className={`w-10 h-10 shrink-0 p-3 rounded-xl border-2 flex justify-center items-center transition-colors ${isLight ? "border-slate-200 text-slate-400 hover:text-rose-500 hover:bg-rose-50 hover:border-rose-200" : "border-slate-800 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30"}`}
-                          onClick={() => handleRemoveAuth(index)}
-                        >
-                          <svg
-                            className="w-4 h-4 cursor-pointer"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2.5"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            ></path>
-                          </svg>
-                        </button>
+                        Select Auth Type
+                      </Label>
+                      <Select.Trigger>
+                        <Select.Value />
+                        <Select.Indicator />
+                      </Select.Trigger>
+                      <Select.Popover>
+                        <ListBox>
+                          {authType.map((auth, index) => {
+                            return (
+                              <ListBox.Item
+                                key={index}
+                                id={auth.id}
+                                value={auth.id}
+                                textValue={auth.name}
+                              >
+                                {auth.name}
+                                <ListBox.ItemIndicator />
+                              </ListBox.Item>
+                            );
+                          })}
+                        </ListBox>
+                      </Select.Popover>
+                    </Select>
+
+                    {auth === "noAuth" && (
+                      <div className="flex justify-center items-center w-full p-5">
+                        <p className="text-sm font-semibold tracking-wide">
+                          No Auth
+                        </p>
                       </div>
-                    ))}
-                    <div className="grid grid-cols-12 gap-3 items-center opacity-70 hover:opacity-100 transition-opacity">
-                      <button
-                        className={`w-10 h-10 shrink-0 p-3 rounded-xl border-2 flex justify-center items-center transition-colors ${isLight ? "border-slate-200 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 hover:border-emerald-200" : "border-slate-800 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30"}`}
-                        onClick={() => handleAddAuth()}
-                      >
-                        <svg
-                          className="w-4 h-4 cursor-pointer"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2.5"
-                            d="M12 4v16m8-8H4"
-                          ></path>
-                        </svg>
-                      </button>
-                    </div>
+                    )}
+
+                    {auth === "basicAuth" && (
+                      <div className="flex justify-center items-center w-full p-5">
+                        <div className="flex flex-col gap-3 w-full">
+                          <div
+                            className={`flex gap-3 flex-col p-5 rounded-xl shadow-lg ${isLight ? "bg-slate-50/50 border-2 border-slate-200" : "bg-[#0a0f18]/30 border-2 border-slate-800"}`}
+                          >
+                            <p className="text-sm font-semibold tracking-wide text-center">
+                              Basic Auth
+                            </p>
+
+                            <Label
+                              className={`text-sm font-semibold tracking-wide ${isLight ? "text-slate-900" : "text-slate-100"}`}
+                            >
+                              Username
+                            </Label>
+                            <Input
+                              className="w-full"
+                              placeholder="Username"
+                              value={basicAuthUsername}
+                              onChange={(e) =>
+                                setBasicAuthUsername(e.target.value)
+                              }
+                            />
+                            <Label
+                              className={`text-sm font-semibold tracking-wide ${isLight ? "text-slate-900" : "text-slate-100"}`}
+                            >
+                              Password
+                            </Label>
+                            <Input
+                              className="w-full"
+                              placeholder="Password"
+                              value={basicAuthPassword}
+                              onChange={(e) =>
+                                setBasicAuthPassword(e.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {auth === "bearerToken" && (
+                      <div className="flex justify-center items-center w-full p-5">
+                        <div className="flex flex-col gap-3 w-full">
+                          <div
+                            className={`flex gap-3 flex-col p-5 rounded-xl shadow-lg ${isLight ? "bg-slate-50/50 border-2 border-slate-200" : "bg-[#0a0f18]/30 border-2 border-slate-800"}`}
+                          >
+                            <p className="text-sm font-semibold tracking-wide text-center">
+                              Bearer Auth
+                            </p>
+
+                            <Label
+                              className={`text-sm font-semibold tracking-wide ${isLight ? "text-slate-900" : "text-slate-100"}`}
+                            >
+                              Token
+                            </Label>
+                            <Input
+                              className="w-full"
+                              placeholder="Token"
+                              value={bearerAuthToken}
+                              onChange={(e) =>
+                                setBearerAuthToken(e.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {auth === "apiKey" && (
+                      <div className="flex justify-center items-center w-full p-5">
+                        <div className="flex flex-col gap-3 w-full">
+                          <div
+                            className={`flex gap-3 flex-col p-5 rounded-xl shadow-lg ${isLight ? "bg-slate-50/50 border-2 border-slate-200" : "bg-[#0a0f18]/30 border-2 border-slate-800"}`}
+                          >
+                            <p className="text-sm font-semibold tracking-wide text-center">
+                              API Key Auth
+                            </p>
+
+                            <Label
+                              className={`text-sm font-semibold tracking-wide ${isLight ? "text-slate-900" : "text-slate-100"}`}
+                            >
+                              API Key
+                            </Label>
+                            <Input
+                              className="w-full"
+                              placeholder="API Key"
+                              value={apiKey}
+                              onChange={(e) => setApiKey(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {auth === "jwt" && (
+                      <div className="flex justify-center items-center w-full p-5">
+                        <div className="flex flex-col gap-3 w-full">
+                          <div
+                            className={`flex gap-3 flex-col p-5 rounded-xl shadow-lg ${isLight ? "bg-slate-50/50 border-2 border-slate-200" : "bg-[#0a0f18]/30 border-2 border-slate-800"}`}
+                          >
+                            <p className="text-sm font-semibold tracking-wide text-center">
+                              JWT Token Auth
+                            </p>
+
+                            <Label
+                              className={`text-sm font-semibold tracking-wide ${isLight ? "text-slate-900" : "text-slate-100"}`}
+                            >
+                              JWT Token
+                            </Label>
+                            <Input
+                              className="w-full"
+                              placeholder="JWT Token"
+                              value={jwtToken}
+                              onChange={(e) => setJwtToken(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
