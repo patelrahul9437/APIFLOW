@@ -49,7 +49,7 @@ const workspaceSlice = createSlice({
                 return;
             }
             state = JSON.parse(localStorage.getItem("workspace"));
-            state = state.map((item) => item.id === id ? { id:id,url:action.payload.url,method:action.payload.method,params:action.payload.params,headers:action.payload.headers,body:action.payload.body,active:true,activeTab:action.payload.activeTab} : item);
+            state = state.map((item) => item.id === id ? { id:id,url:action.payload.url,method:action.payload.method,params:action.payload.params,headers:action.payload.headers,body:action.payload.body,auth:action.payload.auth,active:true,activeTab:action.payload.activeTab} : item);
             localStorage.setItem("workspace", JSON.stringify(state));
         }
     },

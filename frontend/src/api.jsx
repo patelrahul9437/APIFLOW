@@ -63,6 +63,64 @@ function Api() {
       setHeaders(activeWorkspace.headers.map((h) => ({ ...h })));
       setBody(activeWorkspace.body);
       // setActiveTab(activeWorkspace.activeTab);
+      setAuth(activeWorkspace.auth);
+
+      if (activeWorkspace.auth === "basicAuth") {
+        const basicAuthData = activeWorkspace.headers.find(
+          (item) => item.key === "Authorization",
+        );
+        if (basicAuthData) {
+          try {
+            const base64Value = basicAuthData.value
+              .replace(/^Basic\s+/i, "")
+              .trim();
+
+            const decodedData = atob(base64Value);
+            const [username, password] = decodedData.split(":");
+            setBasicAuthUsername(username);
+            setBasicAuthPassword(password);
+          } catch (error) {
+            console.error("Error decoding basic auth data:", error);
+            setBasicAuthUsername("");
+            setBasicAuthPassword("");
+          }
+        }
+      }
+
+      if (activeWorkspace.auth === "bearerToken") {
+        try {
+          const bearerTokenData = activeWorkspace.headers.find(
+            (item) => item.key === "Authorization",
+          );
+          if (bearerTokenData) {
+            const base64Value = bearerTokenData.value
+              .replace(/^Bearer\s+/i, "")
+              .trim();
+            setBearerAuthToken(base64Value);
+          }
+        } catch (error) {
+          console.error("Error decoding bearer token data:", error);
+          setBearerAuthToken("");
+        }
+      }
+
+      if (activeWorkspace.auth === "apiKey") {
+        try {
+          const apiKeyData = activeWorkspace.headers.find(
+            (item) => item.key === "X-API-Key",
+          );
+          if (apiKeyData) {
+            setApiKey(apiKeyData.value);
+          }
+        } catch (error) {
+          console.error("Error decoding API key data:", error);
+          setApiKey("");
+        }
+      }
+
+      if (activeWorkspace.auth === "jwt") {
+        setJwtToken(activeWorkspace.jwtToken);
+      }
     }
   }, [activeWorkspace]);
 
